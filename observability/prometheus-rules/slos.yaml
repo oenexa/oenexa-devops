@@ -1,0 +1,58 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: oenexa-slo-alerts
+  namespace: monitoring
+  labels:
+    role: alert-rules
+    app.kubernetes.io/part-of: oenexa-ecosystem
+spec:
+  groups:
+    - name: oenexa-slo-burnrate
+      rules:
+        # Identity Service: 99.99% Availability SLO
+        - alert: IdentityServiceHighErrorBudgetBurn
+          expr: |
+            (
+              sum(rate(http_requests_total{job="oenexa-identity",status=~"5.."}[1h]))
+              /
+              sum(rate(http_requests_total{job="oenexa-identity"}[1h]))
+            ) > (14.4 * (1 - 0.9999))
+          for: 2m
+          labels:
+            severity: critical
+            tier: tier-0
+            domain: identity
+          annotations:
+            summary: "Identity Service 1-hour error budget burn rate exceeds 14.4x (2% budget consumed in 1h)"
+            runbook_url: "https://docs.oenexa.com/runbooks/identity-sev1"
+
+        # Wallet Custody Service: 99.99% Availability SLO
+        - alert: WalletServiceHighErrorBudgetBurn
+          expr: |
+            (
+              sum(rate(http_requests_total{job="oenexa-wallet",status=~"5.."}[1h]))
+              /
+              sum(rate(http_requests_total{job="oenexa-wallet"}[1h]))
+            ) > (14.4 * (1 - 0.9999))
+          for: 2m
+          labels:
+            severity: critical
+            tier: tier-0
+            domain: wallet
+          annotations:
+            summary: "Wallet Service 1-hour error budget burn rate exceeds 14.4x"
+            runbook_url: "https://docs.oenexa.com/runbooks/wallet-sev1"
+
+        # L1 Node RPC: 99.95% Availability SLO
+        - alert: L1RpcHighLatency
+          expr: |
+            histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="oenexa-node"}[5m])) by (le)) > 0.150
+          for: 3m
+          labels:
+            severity: warning
+            tier: tier-0
+            domain: chain
+          annotations:
+            summary: "L1 Node RPC p99 latency exceeds 150ms"
+            runbook_url: "https://docs.oenexa.com/runbooks/chain-node-latency"

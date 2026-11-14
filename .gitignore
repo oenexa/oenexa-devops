@@ -1,0 +1,6 @@
+.DS_Store
+*.tgz
+*.log
+.terraform/
+*.tfstate*
+helm/oenexa-service/charts/

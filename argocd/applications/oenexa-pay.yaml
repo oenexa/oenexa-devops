@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: oenexa-pay
+  namespace: argocd
+spec:
+  project: oenexa-platform
+  source:
+    repoURL: 'https://github.com/OENEXA/oenexa-devops.git'
+    targetRevision: HEAD
+    path: helm/oenexa-service
+    helm:
+      valueFiles:
+        - ../../environments/prod/values.yaml
+      values: |
+        serviceName: oenexa-pay
+        image:
+          repository: ghcr.io/oenexa/oenexa-pay
+          tag: v1.0.0
+        ingress:
+          enabled: true
+          host: api.oenexa.com
+          path: /v1/pay
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: oenexa-pay
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

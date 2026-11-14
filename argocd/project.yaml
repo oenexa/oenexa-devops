@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: oenexa-platform
+  namespace: argocd
+spec:
+  description: OENEXA Enterprise Production & Staging Microservices
+  sourceRepos:
+    - 'https://github.com/OENEXA/*.git'
+  destinations:
+    - namespace: 'oenexa-*'
+      server: 'https://kubernetes.default.svc'
+    - namespace: 'oengo-*'
+      server: 'https://kubernetes.default.svc'
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: 'networking.k8s.io'
+      kind: IngressClass
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  namespaceResourceBlacklist:
+    - group: ''
+      kind: ResourceQuota

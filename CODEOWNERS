@@ -1,0 +1,8 @@
+# Global DevOps & Platform Engineering Codeowners
+* @oenexa/platform-engineering @oenexa/sre-leads
+
+# Strict Security & Governance overrides
+/argocd/project.yaml @oenexa/security-architects @oenexa/sre-leads
+/environments/prod/ @oenexa/release-managers @oenexa/sre-leads
+/policies/ @oenexa/security-architects @oenexa/enterprise-architects
+/observability/prometheus-rules/ @oenexa/sre-leads

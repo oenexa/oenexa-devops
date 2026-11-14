@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: oenexa-wallet
+  namespace: argocd
+spec:
+  project: oenexa-platform
+  source:
+    repoURL: 'https://github.com/OENEXA/oenexa-devops.git'
+    targetRevision: HEAD
+    path: helm/oenexa-service
+    helm:
+      valueFiles:
+        - ../../environments/prod/values.yaml
+      values: |
+        serviceName: oenexa-wallet
+        image:
+          repository: ghcr.io/oenexa/oenexa-wallet
+          tag: v1.0.0
+        ingress:
+          enabled: true
+          host: api.oenexa.com
+          path: /v1/wallet
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: oenexa-wallet
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

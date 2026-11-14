@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: oenexa-identity
+  namespace: argocd
+spec:
+  project: oenexa-platform
+  source:
+    repoURL: 'https://github.com/OENEXA/oenexa-devops.git'
+    targetRevision: HEAD
+    path: helm/oenexa-service
+    helm:
+      valueFiles:
+        - ../../environments/prod/values.yaml
+      values: |
+        serviceName: oenexa-identity
+        image:
+          repository: ghcr.io/oenexa/oenexa-identity
+          tag: v1.0.0
+        ingress:
+          enabled: true
+          host: id.oenexa.com
+          tlsSecretName: oenexa-id-tls
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: oenexa-identity
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
