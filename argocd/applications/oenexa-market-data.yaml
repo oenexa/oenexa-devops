@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: oenexa-market-data
+  namespace: argocd
+spec:
+  project: oenexa-platform
+  source:
+    repoURL: 'https://github.com/OENEXA/oenexa-devops.git'
+    targetRevision: HEAD
+    path: helm/oenexa-service
+    helm:
+      valueFiles:
+        - ../../environments/prod/values.yaml
+      values: |
+        serviceName: oenexa-market-data
+        image:
+          repository: ghcr.io/oenexa/oenexa-market-data
+          tag: v1.0.0
+        ingress:
+          enabled: true
+          host: api.oenexa.com
+          path: /v1/market-data
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: oenexa-market-data
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
