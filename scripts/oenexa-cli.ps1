@@ -13,7 +13,7 @@
 #>
 param(
     [Parameter(Position=0)]
-    [ValidateSet("up", "down", "status", "sync", "test", "logs", "routes", "ps", "deploy", "help")]
+    [ValidateSet("up", "down", "status", "sync", "test", "logs", "routes", "ps", "deploy", "audit", "help")]
     [string]$Command = "help",
 
     [Parameter(Position=1)]
@@ -137,6 +137,11 @@ switch ($Command) {
         }
     }
 
+    "audit" {
+        Write-Host "Running ecosystem architectural & governance audit..." -ForegroundColor Yellow
+        & "$ScriptsDir\verify-governance.ps1"
+    }
+
     "help" {
         Write-Host @"
 Available Commands:
@@ -148,6 +153,7 @@ Available Commands:
   .\oenexa-cli.ps1 status                 Show git status across all 30 polyrepo repositories
   .\oenexa-cli.ps1 sync                   Push all commits to origin (GitHub) and server (VPS)
   .\oenexa-cli.ps1 test [target]          Run test suites (core, web, all)
+  .\oenexa-cli.ps1 audit                  Verify compliance with the 8 Inviolable Architectural Laws
   .\oenexa-cli.ps1 logs [service]         Follow container logs in real time
 "@ -ForegroundColor Yellow
     }

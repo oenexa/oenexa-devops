@@ -69,6 +69,10 @@ EOF
         echo -e "\033[0;32m✓ [$TARGET] successfully updated and redeployed!\033[0m"
         docker compose -f "$COMPOSE_FILE" ps "$TARGET"
         ;;
+    audit)
+        echo -e "\033[0;33mRunning ecosystem architectural & governance audit...\033[0m"
+        bash "$SCRIPT_DIR/verify-governance.sh"
+        ;;
     *)
         cat << "EOF"
 Available Commands:
@@ -77,6 +81,7 @@ Available Commands:
   ./oenexa-cli.sh ps                     View running container status and ports
   ./oenexa-cli.sh deploy <service> [env] Independently build and hot-swap a single service (--no-deps)
   ./oenexa-cli.sh routes                 Display single-domain path routing map
+  ./oenexa-cli.sh audit                  Verify compliance with the 8 Inviolable Architectural Laws
   ./oenexa-cli.sh logs [service]         Follow container logs in real time
 EOF
         ;;
