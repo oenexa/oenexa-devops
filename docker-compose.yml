@@ -1,0 +1,9 @@
+# ==============================================================================
+# OENEXA DevOps & Master Orchestrator — Dev Stack Wrapper
+# Points to compose/docker-compose.yml
+# ==============================================================================
+
+version: "3.8"
+
+include:
+  - path: ./compose/docker-compose.yml
