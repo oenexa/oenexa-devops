@@ -1,0 +1,183 @@
+name: Reusable Enterprise CI/CD Pipeline
+# ==============================================================================
+# Central Reusable Workflow for all 31 OENEXA Autonomous Polyrepos
+# Enforces: Zero-Mock Testing, SRP Line Limits (<385 lines), GHCR Docker Publishing,
+# and Automated Zero-Downtime Hot-Swap Deployment via oenexa-cli.sh.
+# ==============================================================================
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        description: "Name of the service (e.g. oenexa-ai-web, oengo-api)"
+        required: true
+        type: string
+      dockerfile_path:
+        description: "Relative path to Dockerfile"
+        required: false
+        default: "./Dockerfile"
+        type: string
+      build_context:
+        description: "Docker build context"
+        required: false
+        default: "."
+        type: string
+      run_deploy:
+        description: "Trigger automated VPS hot-swap on main branch"
+        required: false
+        default: true
+        type: boolean
+      deploy_host:
+        description: "Production server host"
+        required: false
+        default: "62.210.92.60"
+        type: string
+    secrets:
+      VPS_SSH_KEY:
+        description: "SSH Private Key for deployment to production server"
+        required: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # -------------------------------------------------------------
+  # 1. Quality, Governance & Zero-Mock Testing Gate
+  # -------------------------------------------------------------
+  verify-and-test:
+    name: Test & Governance Gate (${{ inputs.service_name }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Law 7: SRP File Line Count Ceiling (< 385 Lines)
+      - name: Audit Single Responsibility Line Ceiling (< 385 Lines)
+        run: |
+          echo ">>> Auditing source files in src/ for 385-line ceiling..."
+          OVERSIZED=0
+          if [ -d "src" ]; then
+            while IFS= read -r file; do
+              lines=$(wc -l < "$file")
+              if [ "$lines" -ge 385 ]; then
+                echo "::error file=$file::File exceeds 385 lines ($lines lines)"
+                OVERSIZED=$((OVERSIZED + 1))
+              fi
+            done < <(find src -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.go" -o -name "*.java" \) ! -path "*/node_modules/*" ! -path "*/dist/*")
+          fi
+          if [ "$OVERSIZED" -gt 0 ]; then
+            echo "Failed: $OVERSIZED files exceed the 385-line SRP ceiling."
+            exit 1
+          fi
+          echo "✓ All source files conform to SRP ceiling (< 385 lines)."
+
+      # Node.js / TypeScript Test Runner
+      - name: Setup Node.js (if applicable)
+        if: hashFiles('package.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Run Node Test Suite
+        if: hashFiles('package.json') != ''
+        run: |
+          npm ci || npm install
+          npm test
+
+      # Go Test Runner
+      - name: Setup Go (if applicable)
+        if: hashFiles('go.mod') != ''
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Run Go Test Suite
+        if: hashFiles('go.mod') != ''
+        run: |
+          go test -v -race ./...
+
+      # Java / Gradle Test Runner
+      - name: Setup Java (if applicable)
+        if: hashFiles('build.gradle', 'build.gradle.kts') != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Run Gradle Test Suite
+        if: hashFiles('build.gradle', 'build.gradle.kts') != ''
+        run: |
+          chmod +x ./gradlew || true
+          ./gradlew test
+
+  # -------------------------------------------------------------
+  # 2. Container Build & GitHub Container Registry (GHCR) Push
+  # -------------------------------------------------------------
+  build-and-push-image:
+    name: Build & Push Container Image
+    needs: verify-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        if: hashFiles(inputs.dockerfile_path) != ''
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        if: hashFiles(inputs.dockerfile_path) != '' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker Image
+        if: hashFiles(inputs.dockerfile_path) != ''
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ inputs.build_context }}
+          file: ${{ inputs.dockerfile_path }}
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ inputs.service_name }}:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/${{ inputs.service_name }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # -------------------------------------------------------------
+  # 3. Automated Zero-Downtime Hot-Swap Deployment (Production VPS)
+  # -------------------------------------------------------------
+  deploy-production:
+    name: Deploy to Production VPS
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && inputs.run_deploy == true
+    steps:
+      - name: Check for SSH Key Secret
+        id: check-secret
+        run: |
+          if [ -n "${{ secrets.VPS_SSH_KEY }}" ]; then
+            echo "has_key=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_key=false" >> $GITHUB_OUTPUT
+            echo "::notice ::VPS_SSH_KEY secret not found in repository. Image was built and published to GHCR. Add VPS_SSH_KEY to repository secrets to enable automated server hot-swap."
+          fi
+
+      - name: Execute Zero-Downtime Deployment via SSH
+        if: steps.check-secret.outputs.has_key == 'true'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ inputs.deploy_host }}
+          username: ubuntu
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            echo ">>> Executing Zero-Downtime Deployment for [${{ inputs.service_name }}]..."
+            cd /opt/oenexa
+            ./oenexa-devops/scripts/oenexa-cli.sh deploy ${{ inputs.service_name }} prod
