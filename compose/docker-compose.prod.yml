@@ -1,0 +1,217 @@
+# ==============================================================================
+# OENEXA Unified Ecosystem — Master Production Multi-Container Orchestration
+# Hardened for Production VPS (62.210.92.60) with Zero Public Port Leakage
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#   docker compose -f docker-compose.prod.yml --profile ai up -d --build
+#   docker compose -f docker-compose.prod.yml ps
+# ==============================================================================
+
+networks:
+  oenexa-network:
+    name: oenexa-network
+    driver: bridge
+
+services:
+
+  # ─── 0. PRODUCTION EDGE REVERSE PROXY (Caddy 2.8) ──────────────────────────
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: oenexa-edge-caddy-prod
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-prod-data:/data
+      - caddy-prod-config:/config
+    networks:
+      - oenexa-network
+
+  # ─── 1. PRODUCTION DATA & CACHE (Internal Network Only) ────────────────────
+  oenexa-postgres:
+    image: pgvector/pgvector:pg17
+    container_name: oenexa-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-oenexa_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env.production}
+      POSTGRES_DB: ${POSTGRES_DB:-oenexa_prod}
+    volumes:
+      - oenexa-postgres-prod-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-oenexa_admin} -d ${POSTGRES_DB:-oenexa_prod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - oenexa-network
+
+  oenexa-redis:
+    image: redis:7-alpine
+    container_name: oenexa-redis-prod
+    restart: unless-stopped
+    volumes:
+      - oenexa-redis-prod-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - oenexa-network
+
+  # ─── 2. TIER 1: AI CORE & COCKPIT ──────────────────────────────────────────
+  oenexa-ai-core:
+    profiles: ["ai", "all"]
+    build:
+      context: ./oenexa-ai-core
+      dockerfile: Dockerfile
+    image: oenexa/oenexa-ai-core:latest
+    container_name: oenexa-ai-core-prod
+    restart: unless-stopped
+    depends_on:
+      oenexa-postgres:
+        condition: service_healthy
+      oenexa-redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: production
+      SPRING_DATASOURCE_URL: jdbc:postgresql://oenexa-postgres:5432/${POSTGRES_DB:-oenexa_prod}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-oenexa_admin}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_REDIS_HOST: oenexa-redis
+      SPRING_REDIS_PORT: 6379
+      OENEXA_REDIS_ENABLED: "true"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+    networks:
+      - oenexa-network
+
+  oenexa-ai-web:
+    profiles: ["ai", "all"]
+    build:
+      context: ./oenexa-ai-web
+      dockerfile: Dockerfile
+    image: oenexa/oenexa-ai-web:latest
+    container_name: oenexa-ai-web-prod
+    restart: unless-stopped
+    depends_on:
+      oenexa-ai-core:
+        condition: service_healthy
+    networks:
+      - oenexa-network
+
+  # ─── 3. TIER 2: BLOCKCHAIN DAEMON & EXPLORER ──────────────────────────────
+  oenexa-node:
+    profiles: ["blockchain", "all"]
+    build:
+      context: ./oenexa-node
+      dockerfile: Dockerfile
+    image: oenexa/oenexa-node:latest
+    container_name: oenexa-node-prod
+    restart: unless-stopped
+    environment:
+      ONXC_PASSWORD: "${ONXC_PASSWORD:?ONXC_PASSWORD must be set in .env.production}"
+    ports:
+      - "8765:8765"   # P2P Gossip (Must be open to WAN for blockchain peers)
+    volumes:
+      - onxc-chain-prod-data:/data
+      - ./oenexa-node/configs/mainnet.toml:/data/config.toml:ro
+    command: >
+      start
+      --config /data/config.toml
+      --datadir /data
+      --metrics
+      --miner
+    healthcheck:
+      test: ["CMD", "/healthcheck"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - oenexa-network
+
+  oenexa-explorer:
+    profiles: ["blockchain", "all"]
+    build:
+      context: ./oenexa-explorer
+      dockerfile: Dockerfile
+    image: oenexa/oenexa-explorer:latest
+    container_name: oenexa-explorer-prod
+    restart: unless-stopped
+    depends_on:
+      oenexa-node:
+        condition: service_healthy
+    networks:
+      - oenexa-network
+
+  # ─── 4. TIER 3: PORTAL & TRADING PLATFORM ──────────────────────────────────
+  oenexa-ui:
+    profiles: ["portal", "all"]
+    build:
+      context: ./oenexa-ui
+      dockerfile: Dockerfile
+    image: oenexa/oenexa-ui:latest
+    container_name: oenexa-ui-prod
+    restart: unless-stopped
+    networks:
+      - oenexa-network
+
+  # ─── 5. TIER 4: COMMERCE & ESCROW ──────────────────────────────────────────
+  oengo-api:
+    profiles: ["commerce", "all"]
+    build:
+      context: ./oengo-api
+      dockerfile: Dockerfile
+    image: oengo-api:latest
+    container_name: oengo-api-prod
+    restart: unless-stopped
+    environment:
+      PORT: "3001"
+      OENEXA_RPC_URL: "http://oenexa-node:8545"
+      DATABASE_DSN: "host=oenexa-postgres user=${POSTGRES_USER:-oenexa_admin} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB:-oenexa_prod} port=5432 sslmode=disable"
+    depends_on:
+      - oenexa-postgres
+    networks:
+      - oenexa-network
+
+  oengo-web:
+    profiles: ["commerce", "all"]
+    build:
+      context: ./oengo-web
+      dockerfile: Dockerfile
+    image: oengo-web:latest
+    container_name: oengo-web-prod
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      NEXT_PUBLIC_API_URL: "https://oenexa.com/oengo-api"
+    depends_on:
+      - oengo-api
+    networks:
+      - oenexa-network
+
+volumes:
+  caddy-prod-data:
+    name: oenexa-caddy-prod-data
+  caddy-prod-config:
+    name: oenexa-caddy-prod-config
+  oenexa-postgres-prod-data:
+    name: oenexa-postgres-prod-data
+  oenexa-redis-prod-data:
+    name: oenexa-redis-prod-data
+  onxc-chain-prod-data:
+    name: onxc-chain-prod-data
