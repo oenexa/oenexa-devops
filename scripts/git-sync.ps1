@@ -5,7 +5,13 @@ param(
 )
 
 $ErrorActionPreference = "Continue"
-$Root = if (Test-Path "$PSScriptRoot\oenexa-ai-core") { $PSScriptRoot } else { Split-Path -Parent $PSScriptRoot }
+# Resolve workspace root by finding where oenexa-ai-core lives
+$Root = $PSScriptRoot
+while ($Root -and -not (Test-Path (Join-Path $Root "oenexa-ai-core"))) {
+    $parent = Split-Path -Parent $Root
+    if ($parent -eq $Root) { break }
+    $Root = $parent
+}
 
 $Repos = Get-ChildItem -Path $Root -Directory | Where-Object {
     Test-Path (Join-Path $_.FullName ".git")

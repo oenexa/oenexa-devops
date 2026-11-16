@@ -5,6 +5,7 @@
 
 set -e
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMPOSE_DIR="$(cd "$ROOT_DIR/../compose" && pwd)"
 COMMAND="${1:-help}"
 TARGET="${2:-all}"
 
@@ -16,16 +17,16 @@ case "$COMMAND" in
     up)
         PROFILE="${TARGET:-all}"
         echo -e "\033[0;33mStarting ecosystem containers with profile: [$PROFILE]...\033[0m"
-        docker compose --profile "$PROFILE" up -d --build
+        docker compose -f "$COMPOSE_DIR/docker-compose.yml" --profile "$PROFILE" up -d --build
         echo -e "\033[0;32m✓ Services launched successfully! Run './oenexa-cli.sh routes' to view endpoints.\033[0m"
         ;;
     down)
         echo -e "\033[0;33mStopping all ecosystem containers cleanly...\033[0m"
-        docker compose down
+        docker compose -f "$COMPOSE_DIR/docker-compose.yml" down
         echo -e "\033[0;32m✓ All containers stopped.\033[0m"
         ;;
     ps)
-        docker compose ps
+        docker compose -f "$COMPOSE_DIR/docker-compose.yml" ps
         ;;
     routes)
         cat << "EOF"
@@ -56,9 +57,9 @@ EOF
             exit 1
         fi
         ENV_MODE="${3:-prod}"
-        COMPOSE_FILE="docker-compose.prod.yml"
+        COMPOSE_FILE="$COMPOSE_DIR/docker-compose.prod.yml"
         if [ "$ENV_MODE" == "dev" ]; then
-            COMPOSE_FILE="docker-compose.yml"
+            COMPOSE_FILE="$COMPOSE_DIR/docker-compose.yml"
         fi
         echo -e "\033[0;33mIndependent Zero-Downtime Deployment for [$TARGET] ($ENV_MODE)...\033[0m"
         echo -e "\033[0;36mStep 1: Rebuilding image for [$TARGET]...\033[0m"

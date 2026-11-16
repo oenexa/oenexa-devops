@@ -25,7 +25,17 @@ param(
 )
 
 $ErrorActionPreference = "Continue"
-$Root = $PSScriptRoot
+$ScriptsDir = $PSScriptRoot
+$DevopsDir = Split-Path -Parent $PSScriptRoot
+$ComposeDir = Join-Path $DevopsDir "compose"
+
+# Resolve workspace root by finding where oenexa-ai-core lives
+$WorkspaceRoot = $PSScriptRoot
+while ($WorkspaceRoot -and -not (Test-Path (Join-Path $WorkspaceRoot "oenexa-ai-core"))) {
+    $parent = Split-Path -Parent $WorkspaceRoot
+    if ($parent -eq $WorkspaceRoot) { break }
+    $WorkspaceRoot = $parent
+}
 
 Write-Host "=================================================================" -ForegroundColor Cyan
 Write-Host "       OENEXA UNIFIED ECOSYSTEM MASTER ORCHESTRATOR CLI          " -ForegroundColor Green
@@ -34,51 +44,55 @@ Write-Host "=================================================================" -
 switch ($Command) {
     "up" {
         $profile = if ($Target) { $Target } else { "all" }
+        $composePath = Join-Path $ComposeDir "docker-compose.yml"
         Write-Host "Starting ecosystem containers with profile: [$profile]..." -ForegroundColor Yellow
-        docker compose --profile $profile up -d --build
-        Write-Host "`n✓ Services launched successfully! Run '.\oenexa-cli.ps1 routes' to view URL endpoints." -ForegroundColor Green
+        docker compose -f $composePath --profile $profile up -d --build
+        Write-Host "`n✓ Services launched successfully! Run 'oenexa-cli.ps1 routes' to view URL endpoints." -ForegroundColor Green
     }
 
     "down" {
+        $composePath = Join-Path $ComposeDir "docker-compose.yml"
         Write-Host "Stopping all ecosystem containers cleanly..." -ForegroundColor Yellow
-        docker compose down
+        docker compose -f $composePath down
         Write-Host "✓ All containers stopped." -ForegroundColor Green
     }
 
     "ps" {
-        docker compose ps
+        $composePath = Join-Path $ComposeDir "docker-compose.yml"
+        docker compose -f $composePath ps
     }
 
     "status" {
         Write-Host "Checking git status across all 30 repositories..." -ForegroundColor Yellow
-        & "$Root\scripts\git-sync.ps1" -Action status
+        & "$ScriptsDir\git-sync.ps1" -Action status
     }
 
     "sync" {
         Write-Host "Synchronizing all 30 repositories to origin (GitHub) and server (VPS)..." -ForegroundColor Yellow
-        & "$Root\scripts\git-sync.ps1" -Action push
+        & "$ScriptsDir\git-sync.ps1" -Action push
     }
 
     "test" {
         Write-Host "Executing test suite for scope: [$Target]..." -ForegroundColor Yellow
         if ($Target -in @("core", "backend")) {
-            Push-Location "$Root\oenexa-ai-core"
+            Push-Location "$WorkspaceRoot\oenexa-ai-core"
             .\gradlew.bat test
             Pop-Location
         } elseif ($Target -in @("web", "frontend")) {
-            Push-Location "$Root\oenexa-ai-web"
+            Push-Location "$WorkspaceRoot\oenexa-ai-web"
             npm test -- --run
             Pop-Location
         } else {
-            & "$Root\scripts\run-tests.ps1" -Scope all
+            & "$ScriptsDir\run-tests.ps1" -Scope all
         }
     }
 
     "logs" {
+        $composePath = Join-Path $ComposeDir "docker-compose.yml"
         if ($Target -and $Target -ne "all") {
-            docker compose logs -f $Target
+            docker compose -f $composePath logs -f $Target
         } else {
-            docker compose logs -f --tail=50
+            docker compose -f $composePath logs -f --tail=50
         }
     }
 
@@ -105,18 +119,19 @@ switch ($Command) {
             return
         }
         $composeFile = if ($Env -eq "prod") { "docker-compose.prod.yml" } else { "docker-compose.yml" }
+        $composePath = Join-Path $ComposeDir $composeFile
         Write-Host "Independent Zero-Downtime Deployment for [$Target] ($Env)..." -ForegroundColor Yellow
         Write-Host "Step 1: Rebuilding image for [$Target]..." -ForegroundColor Cyan
-        docker compose -f $composeFile build $Target
+        docker compose -f $composePath build $Target
         if ($LASTEXITCODE -ne 0) {
             Write-Host "Failed to build container for $Target. Deployment aborted." -ForegroundColor Red
             return
         }
         Write-Host "Step 2: Performing hot-swap with --no-deps (zero disruption to other services)..." -ForegroundColor Cyan
-        docker compose -f $composeFile up -d --no-deps $Target
+        docker compose -f $composePath up -d --no-deps $Target
         if ($LASTEXITCODE -eq 0) {
             Write-Host "✓ [$Target] successfully updated and redeployed!" -ForegroundColor Green
-            docker compose -f $composeFile ps $Target
+            docker compose -f $composePath ps $Target
         } else {
             Write-Host "Deployment failed for $Target." -ForegroundColor Red
         }
