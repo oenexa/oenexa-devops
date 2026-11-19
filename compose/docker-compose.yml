@@ -192,66 +192,6 @@ services:
     networks:
       - oenexa-network
 
-  # ─── 5. ISOLATED PERSISTENCE: OENGO COMMERCE DATABASE (PostgreSQL 16) ───────
-  oengo-postgres:
-    profiles: ["commerce", "all"]
-    image: postgres:16-alpine
-    container_name: oengo-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${OENGO_DB_USER:-oengo_admin}
-      POSTGRES_PASSWORD: ${OENGO_DB_PASSWORD:-oengo_secret_pass}
-      POSTGRES_DB: ${OENGO_DB_NAME:-oengo_commerce_db}
-    ports:
-      - "5433:5432"
-    volumes:
-      - oengo-postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${OENGO_DB_USER:-oengo_admin} -d ${OENGO_DB_NAME:-oengo_commerce_db}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - oenexa-network
-
-  oengo-api:
-    profiles: ["commerce", "all"]
-    build:
-      context: ../../oengo-api
-      dockerfile: Dockerfile
-    image: oengo-api:latest
-    container_name: oengo-api
-    restart: unless-stopped
-    environment:
-      PORT: "3001"
-      OENEXA_RPC_URL: "http://oenexa-node:8545"
-      DATABASE_DSN: "host=oengo-postgres user=${OENGO_DB_USER:-oengo_admin} password=${OENGO_DB_PASSWORD:-oengo_secret_pass} dbname=${OENGO_DB_NAME:-oengo_commerce_db} port=5432 sslmode=disable"
-    ports:
-      - "3001:3001"
-    depends_on:
-      oengo-postgres:
-        condition: service_healthy
-    networks:
-      - oenexa-network
-
-  oengo-web:
-    profiles: ["commerce", "all"]
-    build:
-      context: ../../oengo-web
-      dockerfile: Dockerfile
-    image: oengo-web:latest
-    container_name: oengo-web
-    restart: unless-stopped
-    environment:
-      PORT: "3000"
-      NEXT_PUBLIC_API_URL: "http://localhost/oengo-api"
-    ports:
-      - "3004:3000"
-    depends_on:
-      - oengo-api
-    networks:
-      - oenexa-network
-
 volumes:
   caddy-data:
     name: oenexa-caddy-data
@@ -261,7 +201,5 @@ volumes:
     name: oenexa-ai-postgres-data
   oenexa-ai-redis-data:
     name: oenexa-ai-redis-data
-  oengo-postgres-data:
-    name: oengo-postgres-data
   onxc-chain-data:
     name: onxc-chain-data

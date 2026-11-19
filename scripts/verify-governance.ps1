@@ -61,8 +61,7 @@ $serviceRepos = @(
     "oenexa-agents", "oenexa-ai-core", "oenexa-ai-web", "oenexa-exchange",
     "oenexa-explorer", "oenexa-identity", "oenexa-liquidity", "oenexa-market-data",
     "oenexa-node", "oenexa-pay", "oenexa-rag", "oenexa-ui", "oenexa-validator",
-    "oenexa-wallet", "oengo-admin", "oengo-api", "oengo-customer", "oengo-driver",
-    "oengo-merchant", "oengo-web"
+    "oenexa-wallet"
 )
 
 $missingDocker = @()
@@ -86,9 +85,8 @@ Write-Host "`n4. Auditing Database-per-Service Isolation..." -ForegroundColor Ye
 $composeProd = Join-Path $WorkspaceRoot "oenexa-devops\compose\docker-compose.prod.yml"
 $composeContent = Get-Content $composeProd -Raw
 $hasAiPostgres = $composeContent -match "oenexa-ai-postgres"
-$hasOengoPostgres = $composeContent -match "oengo-postgres"
 $noSharedDb = ($composeContent -notmatch "oenexa-postgres:")
-Assert-Rule "Law 3: Database-per-Service (Isolated AI & Commerce DBs)" ($hasAiPostgres -and $hasOengoPostgres -and $noSharedDb) "Shared database pattern detected in docker-compose.prod.yml!"
+Assert-Rule "Law 3: Database-per-Service (Isolated Persistence)" ($hasAiPostgres -and $noSharedDb) "Shared database pattern detected in docker-compose.prod.yml!"
 
 # -------------------------------------------------------------
 # Check 5: SRP File Size Limit (< 385 Lines in Autonomous Microservices)
@@ -97,8 +95,7 @@ Write-Host "`n5. Auditing Single Responsibility Principle (< 385 Lines in Micros
 $microserviceDirs = @(
     "oenexa-agents", "oenexa-exchange", "oenexa-identity", "oenexa-liquidity",
     "oenexa-market-data", "oenexa-pay", "oenexa-rag", "oenexa-validator",
-    "oenexa-wallet", "oengo-admin", "oengo-customer", "oengo-driver",
-    "oengo-merchant"
+    "oenexa-wallet"
 )
 $oversizedFiles = @()
 foreach ($ms in $microserviceDirs) {

@@ -14,7 +14,7 @@ while ($Root -and -not (Test-Path (Join-Path $Root "oenexa-ai-core"))) {
 }
 
 $Repos = Get-ChildItem -Path $Root -Directory | Where-Object {
-    Test-Path (Join-Path $_.FullName ".git")
+    (Test-Path (Join-Path $_.FullName ".git")) -and ($_.Name -like "oenexa-*")
 }
 
 Write-Host "==========================================================" -ForegroundColor Cyan

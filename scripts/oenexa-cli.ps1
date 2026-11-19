@@ -105,8 +105,6 @@ switch ($Command) {
   🧠 AI Core Central Intelligence API  : http://localhost/api/v4/    (oenexa-ai-core:8080)
   🔍 L1 Post-Quantum Block Explorer    : http://localhost/explorer/  (oenexa-explorer:80)
   ⛓️ Layer-1 Blockchain Node JSON-RPC   : http://localhost/rpc        (oenexa-node:8545)
-  🍔 D-Commerce Food Storefront        : http://localhost/food/      (oengo-web:3000)
-  💳 Escrow Relayer & Banking API      : http://localhost/oengo-api/ (oengo-api:3001)
 -----------------------------------------------------------------
 "@ -ForegroundColor White
     }
@@ -115,7 +113,7 @@ switch ($Command) {
         if (-not $Target -or $Target -eq "all") {
             Write-Host "Error: You must specify an exact service to deploy independently!" -ForegroundColor Red
             Write-Host "Example: .\oenexa-cli.ps1 deploy oenexa-ai-web" -ForegroundColor Yellow
-            Write-Host "Services: oenexa-ai-web, oenexa-ai-core, oenexa-node, oenexa-explorer, oenexa-ui, oengo-api, oengo-web, caddy" -ForegroundColor Cyan
+            Write-Host "Services: oenexa-ai-web, oenexa-ai-core, oenexa-node, oenexa-explorer, oenexa-ui, caddy" -ForegroundColor Cyan
             return
         }
         $composeFile = if ($Env -eq "prod") { "docker-compose.prod.yml" } else { "docker-compose.yml" }
