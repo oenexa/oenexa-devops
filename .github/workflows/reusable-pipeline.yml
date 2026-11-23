@@ -9,7 +9,7 @@ on:
   workflow_call:
     inputs:
       service_name:
-        description: "Name of the service (e.g. oenexa-ai-web, oengo-api)"
+        description: "Name of the service (e.g. oenexa-ai-web, oenexa-pay)"
         required: true
         type: string
       dockerfile_path:

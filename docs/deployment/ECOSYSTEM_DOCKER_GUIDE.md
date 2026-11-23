@@ -22,9 +22,9 @@
              │ :5432 / :6379                                             │ :8545 (Internal RPC)
              ▼                                                           │
    ┌───────────────────┐         ┌───────────────────┐         ┌─────────┴─────────┐
-   │ Postgres & Redis  │         │     oengo-web     │         │     oengo-api     │
-   │ (Persistence &    │         │ (Next.js 16 SSR)  │────────►│ (Express / Go Gin │
-   │  NVMe Context)    │         │     ~120 MB)      │  :8081  │      ~85 MB)      │
+   │ Postgres & Redis  │         │    oenexa-pay     │         │  oenexa-exchange  │
+   │ (Persistence &    │         │ (ISO 20022 Engine │────────►│ (Institutional FIX│
+   │  NVMe Context)    │         │     ~45 MB)       │  :8082  │     ~45 MB)       │
    └───────────────────┘         └───────────────────┘         └───────────────────┘
                                            │
                     ═══════════════════════════════════════════
@@ -58,16 +58,16 @@ Inside the private `oenexa-network`, services communicate using **Docker automat
 │ oenexa-ai-web     │ oenexa-ai-web     │ :80 (Nginx SPA + /api proxy)  │ 5173                  │
 │ oenexa-node       │ oenexa-node       │ :8545 (RPC), :8765, :9090     │ 8545, 8765, 9090      │
 │ oenexa-explorer   │ oenexa-explorer   │ :80                           │ 5174                  │
-│ oengo-api         │ oengo-api         │ :8081                         │ 8081                  │
-│ oengo-web         │ oengo-web         │ :3000                         │ 3000                  │
+│ oenexa-pay        │ oenexa-pay        │ :8086                         │ 8086                  │
+│ oenexa-exchange   │ oenexa-exchange   │ :8082                         │ 8082                  │
 │ postgres          │ oenexa-postgres   │ :5432                         │ 5432                  │
 │ redis             │ oenexa-redis      │ :6379                         │ 6379                  │
 └───────────────────┴───────────────────┴───────────────────────────────┴───────────────────────┘
 ```
 
 * **`oenexa-ai-web` ➡️ `oenexa-ai-core`**: Proxies `/api/*` to `http://oenexa-ai-core:8080`
-* **`oengo-api` ➡️ `oenexa-node`**: Connects via `http://oenexa-node:8545`
-* **`oengo-web` ➡️ `oengo-api`**: Connects via `http://oengo-api:8081`
+* **`oenexa-pay` ➡️ `oenexa-node`**: Connects via `http://oenexa-node:8545`
+* **`oenexa-exchange` ➡️ `oenexa-pay`**: Settles trades via `http://oenexa-pay:8086`
 * **`oenexa-explorer` ➡️ `oenexa-node`**: Queries `http://oenexa-node:8545`
 
 ---

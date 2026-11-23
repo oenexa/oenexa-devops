@@ -106,7 +106,7 @@ oenexa-postgres:5432
   ├── oenexa_ai_db          (Role: oenexa_ai_app)       -> AI Agents, Memories, 1536-dim HNSW Vectors
   ├── oenexa_market_data_db (Role: oenexa_market_data_app)-> Price Tickers, L2 Snapshots
   ├── oenexa_validator_db   (Role: oenexa_validator_app)-> Staking, Slashing, Epoch Rewards
-  └── oengo_commerce_db     (Role: oengo_app)           -> Stores, Menus, Orders, Drivers
+  └── oenexa_banking_ledger_db (Role: oenexa_ledger_app)   -> Chart of Accounts, Double-Entry Postings, Settlement Journals
 ```
 
 ### Connection String Template for Microservices

@@ -37,8 +37,8 @@ case "$COMMAND" in
   🧠 AI Core Central Intelligence API  : http://localhost/api/v4/    (oenexa-ai-core:8080)
   🔍 L1 Post-Quantum Block Explorer    : http://localhost/explorer/  (oenexa-explorer:80)
   ⛓️ Layer-1 Blockchain Node JSON-RPC   : http://localhost/rpc        (oenexa-node:8545)
-  🍔 D-Commerce Food Storefront        : http://localhost/food/      (oengo-web:3000)
-  💳 Escrow Relayer & Banking API      : http://localhost/oengo-api/ (oengo-api:3001)
+  💳 Regulated Payments API (ISO 20022): http://localhost/pay/        (oenexa-pay:8086)
+  🏛️ Institutional Exchange (FIX 4.4)  : http://localhost/exchange/   (oenexa-exchange:8082)
 -----------------------------------------------------------------
 EOF
         ;;
@@ -53,7 +53,7 @@ EOF
         if [ -z "$TARGET" ] || [ "$TARGET" == "all" ]; then
             echo -e "\033[0;31mError: You must specify an exact service to deploy independently!\033[0m"
             echo -e "\033[0;33mExample: ./oenexa-cli.sh deploy oenexa-ai-web\033[0m"
-            echo -e "\033[0;36mServices: oenexa-ai-web, oenexa-ai-core, oenexa-node, oenexa-explorer, oenexa-ui, oengo-api, oengo-web, caddy\033[0m"
+            echo -e "\033[0;36mServices: oenexa-ai-web, oenexa-ai-core, oenexa-node, oenexa-explorer, oenexa-ui, oenexa-pay, oenexa-exchange, caddy\033[0m"
             exit 1
         fi
         ENV_MODE="${3:-prod}"

@@ -49,8 +49,7 @@ SERVICES=(
     "oenexa-agents" "oenexa-ai-core" "oenexa-ai-web" "oenexa-exchange"
     "oenexa-explorer" "oenexa-identity" "oenexa-liquidity" "oenexa-market-data"
     "oenexa-node" "oenexa-pay" "oenexa-rag" "oenexa-ui" "oenexa-validator"
-    "oenexa-wallet" "oengo-admin" "oengo-api" "oengo-customer" "oengo-driver"
-    "oengo-merchant" "oengo-web"
+    "oenexa-wallet"
 )
 for svc in "${SERVICES[@]}"; do
     if [ -d "$WORKSPACE_ROOT/$svc" ]; then
@@ -65,7 +64,7 @@ assert_rule "Law 5: Standalone Execution Standard" "$MISSING_DOCKER" "Missing Do
 echo -e "\033[1;33m4. Auditing Database-per-Service Isolation...\033[0m"
 COMPOSE_FILE="$WORKSPACE_ROOT/oenexa-devops/compose/docker-compose.prod.yml"
 SHARED_DB_FAIL=0
-if ! grep -q "oenexa-ai-postgres" "$COMPOSE_FILE" || ! grep -q "oengo-postgres" "$COMPOSE_FILE"; then
+if ! grep -q "oenexa-ai-postgres" "$COMPOSE_FILE" || ! grep -q "oenexa-postgres" "$COMPOSE_FILE"; then
     SHARED_DB_FAIL=1
 fi
 assert_rule "Law 3: Database-per-Service Isolation" "$SHARED_DB_FAIL" "Isolated DB containers not found"
@@ -76,8 +75,7 @@ OVERSIZED=0
 MS_DIRS=(
     "oenexa-agents" "oenexa-exchange" "oenexa-identity" "oenexa-liquidity"
     "oenexa-market-data" "oenexa-pay" "oenexa-rag" "oenexa-validator"
-    "oenexa-wallet" "oengo-admin" "oengo-customer" "oengo-driver"
-    "oengo-merchant"
+    "oenexa-wallet"
 )
 for ms in "${MS_DIRS[@]}"; do
     if [ -d "$WORKSPACE_ROOT/$ms/src" ]; then

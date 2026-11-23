@@ -6,11 +6,11 @@
       - ai         : Launches AI Core (Java 25) + AI Web (React 18) + Postgres + Redis
       - blockchain : Launches oenexa-node (Go L1) + oenexa-explorer (React 18)
       - portal     : Launches oenexa-ui (Trading Portal & Exchange)
-      - commerce   : Launches oengo-api + oengo-web (Next.js Storefront)
+      - fintech    : Launches oenexa-pay + oenexa-exchange + oenexa-wallet
       - all        : Launches the entire OENEXA enterprise stack under Caddy reverse proxy
 #>
 param(
-    [ValidateSet("all", "ai", "blockchain", "portal", "commerce")]
+    [ValidateSet("all", "ai", "blockchain", "portal", "fintech")]
     [string]$Profile = "all"
 )
 

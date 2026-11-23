@@ -11,7 +11,7 @@ In modern hyper-scale platforms (e.g. Netflix, Stripe, Uber), **Polyrepo (separa
 
 ### Core Architectural Axioms
 1. **Repository Isolation:** Each of the 30 repositories has its own Git history, issue tracking, dependency tree, and code ownership.
-2. **Blast Radius Containment:** A failure, memory leak, or deployment rollback in one service (e.g., Quick Commerce `oengo-merchant`) has **zero blast radius** on mission-critical services (e.g., L1 Blockchain `oenexa-node` or AI Central Intelligence `oenexa-ai-core`).
+2. **Blast Radius Containment:** A failure, memory leak, or deployment rollback in one service (e.g., Payment Gateway `oenexa-pay`) has **zero blast radius** on mission-critical services (e.g., L1 Blockchain `oenexa-node` or AI Central Intelligence `oenexa-ai-core`).
 3. **Independent CI/CD:** Developers build, lint, and test solely the codebase they modified. Build times stay under 3 minutes instead of 45+ minutes.
 4. **Zero-Downtime Hot-Swapping (`--no-deps`):** Deploying a new release replaces only the designated container. The Edge Reverse Proxy (Caddy) dynamically routes new requests to the upgraded container using Docker's internal DNS with **zero downtime**.
 5. **Unified Domain Experience (`https://oenexa.com`):** Despite running as independent microservices and SPAs, end-users, mobile apps, and merchants interact with a single, unified domain.
@@ -28,8 +28,8 @@ In modern hyper-scale platforms (e.g. Netflix, Stripe, Uber), **Polyrepo (separa
 | `oenexa-node` | `oenexa-node` | Go 1.26 / LevelDB | 8545, 8765 | `/rpc`, `/ws` | `blockchain`, `all` |
 | `oenexa-explorer` | `oenexa-explorer` | React 18 / Vite 5 / Nginx | 80 | `/explorer/*` | `blockchain`, `all` |
 | `oenexa-ui` | `oenexa-ui` | React 18 / Next.js / Nginx | 80 | `/*` (Root) | `portal`, `all` |
-| `oengo-api` | `oengo-api` | Go 1.26 / PostgreSQL | 3001 | `/oengo-api/*` | `commerce`, `all` |
-| `oengo-web` | `oengo-web` | Next.js 16 SSR | 3000 | `/food/*` | `commerce`, `all` |
+| `oenexa-pay` | `oenexa-pay` | Node.js 22 / TypeScript | 8086 | `/pay/*` | `fintech`, `all` |
+| `oenexa-exchange` | `oenexa-exchange` | Node.js 22 / TypeScript | 8082 | `/exchange/*` | `fintech`, `all` |
 | `oenexa-postgres` | Official Image | PostgreSQL 17 + pgvector | 5432 | Internal Only | Core / DB |
 | `oenexa-redis` | Official Image | Redis 7 Alpine | 6379 | Internal Only | Core / Cache |
 
