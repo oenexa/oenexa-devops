@@ -27,7 +27,8 @@ echo "[Step 2/5] Creating baseline compressed database backup and WAL archive sn
 BACKUP_FILE="$OUTPUT_DIR/pre_drill_snapshot.sql.gz"
 
 if command -v docker &>/dev/null && docker ps --filter name=oenexa-postgres -q &>/dev/null; then
-    docker exec -e PGPASSWORD="${PGPASSWORD:-postgres}" oenexa-postgres \
+    PG_PASS=$(docker inspect oenexa-postgres --format '{{range .Config.Env}}{{println .}}{{end}}' | grep '^POSTGRES_PASSWORD=' | cut -d= -f2-)
+    docker exec -e PGPASSWORD="${PG_PASS:-postgres}" oenexa-postgres \
         pg_dumpall -h localhost -U postgres --clean | gzip -9 > "$BACKUP_FILE"
 else
     # Mock/Simulated environment execution
